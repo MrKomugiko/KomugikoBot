@@ -12,35 +12,34 @@ namespace KomugikoBot
         private readonly DiscordSocketClient _client;
         private readonly CommandService _commands;
         private readonly IConfigurationRoot _config;
+        private readonly IServiceProvider _services;
 
-        public PrefixHandler(DiscordSocketClient client, CommandService commands, IConfigurationRoot config)
+        public PrefixHandler(DiscordSocketClient client, CommandService commands, IConfigurationRoot config, IServiceProvider services)
         {
-            _client= client;
+            _client = client;
             _commands = commands;
             _config = config;
+            _services = services;
         }
 
         public async Task IntitializeAsync()
         {
-            _client.MessageReceived += HsndleCommandAsync;
+            await _commands.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
+            _client.MessageReceived += HandleCommandAsync;
         }
 
-        public void AddModule<T>()
-        {
-            _commands.AddModuleAsync<T>(null);
-        }
-
-        private async Task HsndleCommandAsync(SocketMessage messageParam)
+        private async Task HandleCommandAsync(SocketMessage messageParam)
         {
             var message = messageParam as SocketUserMessage;
            
-            if (message == null) return;
+            if (message == null || message.Author.IsBot) return; 
+
+            Console.WriteLine($"[{DateTime.Now}] [{message.Author.Username}] {message.Content}");
 
             int argPos = 0;
           
             if (!(message.HasCharPrefix(_config["prefix"][0], ref argPos) || 
-                 !message.HasMentionPrefix(_client.CurrentUser, ref argPos)) ||
-                  message.Author.IsBot ) 
+                 !message.HasMentionPrefix(_client.CurrentUser, ref argPos)))
                 return;
 
             var context = new SocketCommandContext(_client, message);

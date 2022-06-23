@@ -35,6 +35,7 @@ public class Program
             .Build();
 
         await RunAsync(host);
+
     }
 
     public async Task RunAsync(IHost host)
@@ -43,12 +44,14 @@ public class Program
         IServiceProvider provider = serviceScope.ServiceProvider;
 
         var _client = provider.GetRequiredService<DiscordSocketClient>();
+
         var sCommand = provider.GetRequiredService<InteractionService>();
         await provider.GetRequiredService<InteractionHandler>().IntitializeAsync();
         var config = provider.GetRequiredService<IConfigurationRoot>();
+
         var pCommand = provider.GetRequiredService<PrefixHandler>();
-        pCommand.AddModule<PrefixModule>();
-        await pCommand.IntitializeAsync();
+        await provider.GetRequiredService<PrefixHandler>().IntitializeAsync();
+        //await pCommand.IntitializeAsync();
 
         _client.Log += async (LogMessage msg) => { Console.WriteLine(msg.Message); };
         sCommand.Log += async (LogMessage msg) => { Console.WriteLine(msg.Message); };
@@ -60,6 +63,8 @@ public class Program
         
         await _client.LoginAsync(TokenType.Bot, config["token:samuraje"]);
         await _client.StartAsync();
+
+        Komugiko bot = Komugiko.Instance;
 
         await Task.Delay(-1); // infinite loop, listening never ends
     }
