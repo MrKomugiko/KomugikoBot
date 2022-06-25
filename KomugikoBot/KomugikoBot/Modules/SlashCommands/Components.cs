@@ -54,7 +54,7 @@ namespace KomugikoBot.Modules.SlashCommands
 
             [InputLabel("send a greetings")]
             [ModalTextInput("greeting_input", TextInputStyle.Short, placeholder: "Be nice..", maxLength: 100)]
-            public string Greetings { get; set; }
+            public string Greetings { get; set; } = "";
         }
     }
 }

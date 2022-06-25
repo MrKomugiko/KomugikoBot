@@ -23,7 +23,7 @@ namespace KomugikoBot
             await _commands.AddModulesAsync(Assembly.GetEntryAssembly(), _services);
             _client.InteractionCreated += HandleInteraction;
         }
-
+        
         private async Task HandleInteraction(SocketInteraction arg)
         {
             try

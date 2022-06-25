@@ -14,6 +14,10 @@ namespace KomugikoBot.Modules.SlashCommands
         {
             double result = number1 + number2;
             await RespondAsync(result.ToString("0.00"), ephemeral: true);
+            var msg = await ReplyAsync(result.ToString("0.00"));
+
+            await Task.Delay(TimeSpan.FromSeconds(10));
+            await msg.DeleteAsync();
         }
     }
 }

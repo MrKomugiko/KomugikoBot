@@ -37,7 +37,7 @@ public class Program
         await RunAsync(host);
 
     }
-
+    
     public async Task RunAsync(IHost host)
     {
         using IServiceScope serviceScope = host.Services.CreateScope();
@@ -58,10 +58,12 @@ public class Program
        
         _client.Ready += async () => {
             Console.WriteLine("Bot ready!");
+            await sCommand.RegisterCommandsToGuildAsync(UInt64.Parse(config["guild:excelentEra"]));
             await sCommand.RegisterCommandsToGuildAsync(UInt64.Parse(config["guild:samuraje"]));
         };
         
-        await _client.LoginAsync(TokenType.Bot, config["token:samuraje"]);
+        await _client.LoginAsync(TokenType.Bot, config["token:DevBot"]);
+
         await _client.StartAsync();
 
         Komugiko bot = Komugiko.Instance;

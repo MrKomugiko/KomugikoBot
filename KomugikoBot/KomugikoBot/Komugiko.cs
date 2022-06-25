@@ -28,5 +28,17 @@ namespace KomugikoBot
         }
 
         public TimeSpan CurrentUptimeUTC => DateTime.Now.ToUniversalTime() - StartDateUTC; //00:00:17.7278547
+
+        public static Dictionary<ulong, FormSettingsInfo> deployedforms = new Dictionary<ulong, FormSettingsInfo>();
+
+        public struct FormSettingsInfo
+        {
+            public bool IsNormalized;
+
+            public FormSettingsInfo(bool isNormalized)
+            {
+                IsNormalized = isNormalized;
+            }
+        }
     }
 }

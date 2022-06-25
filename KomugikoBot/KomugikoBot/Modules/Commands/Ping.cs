@@ -10,5 +10,6 @@ namespace KomugikoBot.Modules.Commands
         {
             await Context.Message.ReplyAsync("Pong!");
         }
+        
     }
 }
