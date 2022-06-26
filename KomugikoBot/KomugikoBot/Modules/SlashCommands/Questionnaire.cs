@@ -17,30 +17,16 @@ namespace KomugikoBot.Modules.SlashCommands
 {
     public class Questionnaire : InteractionModuleBase<SocketInteractionContext>
     {
-     
-
         private readonly DiscordSocketClient _client;
         public Questionnaire(DiscordSocketClient client)
         {
             _client = client;
-            Console.WriteLine("add listener to 'ReactionAdd' NORMALIZED");
-
-            _client.ReactionAdded += RefreshChart;
-            _client.ReactionRemoved += RefreshChart;
         }
-
-        public enum EselectionMode
-        {
-            Single,
-            Multiple
-        }
-
-     
 
         [SlashCommand("questionnaire", "embed test")]
         public async Task HandleQuestionnaireCommend(
             string title,
-            [Summary(description: "(:one: / first option) (:two: / second option) ... ")] string fieldsInput,
+            [Summary(description: "(\\:one: / first option) (\\:two: / second option) ... . IMPORTANT. add escape char '\\' before emoji")] string fieldsInput,
             [Summary(description: "Description under form chart ")] string description,
             [Summary(description: "Select color for left border of embeded form")] DiscordColor BorderColor,
             [Summary(description: "Vote progres bars render mode (default:false)\ntest ")] bool normalized = false,
@@ -62,17 +48,61 @@ namespace KomugikoBot.Modules.SlashCommands
             {
                 string fieldelement = matchedFields[i].Value.Replace("(", "").Replace(")", "");
                 string[] elements = fieldelement.Trim().Split("/");
-                if(elements.Length == 1)
+                if(String.IsNullOrEmpty(elements[0]) || elements.Length == 1)
                 {
-                    await WrongArgumentErrorHandler(title, fieldsInput, description, BorderColor, normalized, timeout, new Exception("missinng emoji or title"));
+                    await WrongArgumentErrorHandler(title, fieldsInput, description, BorderColor, normalized, timeout, new Exception("missinng first argument : emoji with escape character '\\'"));
                     return;
                 }
+                else
+                {
+                    if (String.IsNullOrEmpty(elements[1]))
+                    {
+                        await WrongArgumentErrorHandler(title, fieldsInput, description, BorderColor, normalized, timeout, new Exception("missinng second argument : emoji label"));
+                        return;
+                    }
+                }
+                elements[0] = elements[0].Substring(1).TrimEnd();
 
-                Emote emote = new(elements[0]);
 
-                Console.WriteLine("emoji length "+elements[0]);
-                voteOptions.Add(emote, elements[1]+"\n");
+                IEmote validEmote = null;
+                
+                if (elements[0].Contains("<:") || elements[0].Contains(":"))
+                {
+
+                    Regex emoteNameRegex = new Regex(@"(?<=\:)(.*?)(?=\:)");
+                    MatchCollection matchemojiname = emoteNameRegex.Matches(elements[0]);
+
+                    Discord.Emoji.TryParse(elements[0], out Emoji emoji);
+                    validEmote = (Emoji)emoji;
+
+                    if (emoji == null)
+                    {
+                        // check if its a guild custom emote
+                        validEmote = Context.Guild.Emotes.FirstOrDefault(e => e.Name == matchemojiname.First().Value);
+                        if(validEmote == null)
+                        {
+                            await WrongArgumentErrorHandler(title, fieldsInput, description, BorderColor, normalized, timeout, new Exception("unknow emoji, ensure if is passed only single emoji as argument"));
+                            return;
+                        }
+                    }
+                    Console.WriteLine("emoji name "+ char.ConvertToUtf32(validEmote.Name[0], validEmote.Name[1]));
+                }
+                else
+                {
+                    // basic unicode emote tj. :one:
+                    validEmote = new Emoji(elements[0]);
+                    Console.WriteLine("emoji name "+ validEmote.Name);
+                }
+
+                if (voteOptions.ContainsKey(validEmote))
+                {
+                    Console.WriteLine("Duplicated emoji input");
+                    await DuplicatedEmojiErrorHandler(title, fieldsInput, description, BorderColor, normalized, timeout);
+                    return;
+                }
+                voteOptions.Add(validEmote, elements[1]+"\n");
             }
+
 
             var embed = new EmbedBuilder
             {
@@ -92,6 +122,7 @@ namespace KomugikoBot.Modules.SlashCommands
             IMessage? recentmesage = await Context.Channel.GetMessagesAsync(1, CacheMode.AllowDownload).Flatten().FirstOrDefaultAsync();
 
             List<IEmote> emotes = voteOptions.Keys.ToList();
+
             emotes.ForEach(async x =>
             {
                 try
@@ -105,13 +136,14 @@ namespace KomugikoBot.Modules.SlashCommands
                 }
             });
 
+
             if (normalized)
             {
-                Komugiko.deployedforms.Add(key: recentmesage.Id, value: new FormSettingsInfo(isNormalized: true));
+                Komugiko.deployedforms.Add(key: recentmesage.Id, value: new FormSettingsInfo(isNormalized: true, emotes.ToHashSet()));
             }
             else
             {
-                Komugiko.deployedforms.Add(key: recentmesage.Id, value: new FormSettingsInfo(isNormalized: false));
+                Komugiko.deployedforms.Add(key: recentmesage.Id, value: new FormSettingsInfo(isNormalized: false, emotes.ToHashSet()));
             }
 
 
@@ -122,15 +154,26 @@ namespace KomugikoBot.Modules.SlashCommands
             }
         }
 
-        private async Task RefreshChart(Cacheable<IUserMessage, ulong> msgCache, Cacheable<IMessageChannel, ulong> channel, SocketReaction reaction)
+        public static async Task RefreshChart(Cacheable<IUserMessage, ulong> msgCache, Cacheable<IMessageChannel, ulong> channel, SocketReaction reaction)
         {
             FormSettingsInfo? formmessage = Komugiko.deployedforms.Where(x => x.Key == msgCache.Id).SingleOrDefault().Value;
             if (formmessage == null) return;
-
+            
             IMessage message = await channel.Value.GetMessageAsync(msgCache.Id);
-            if(message == null)
+
+            // prevent user from adding not registered reaction, only bot is allowed
+            if(formmessage.Value.registeredEmojis.Any(x=>x.Name == reaction.Emote.Name) == false && reaction.User.Value.IsBot == false)
+            {
+                // remove this emote
+                await message.RemoveReactionAsync(reaction.Emote, reaction.User.Value);
+                Console.WriteLine("removed not registered reaction from form message");
+                return;
+            }
+            
+            if (message == null)
             {
                 Console.WriteLine("RefreshChart embeded in message id: NULL");
+                return;
             }
             Console.WriteLine("RefreshChart embeded in message id: "+ message?.Id);
             
@@ -168,9 +211,8 @@ namespace KomugikoBot.Modules.SlashCommands
         }
         
        
-        
         // helper methods
-        private Discord.Embed RefreshChartEmbed(IMessage message, SocketReaction reaction, bool normalized = false)
+        private static Discord.Embed RefreshChartEmbed(IMessage message, SocketReaction reaction, bool normalized = false)
         {
             var oldEmbed = message.Embeds.First();
             var totalVotes = message.Reactions.Sum(x => x.Value.ReactionCount);
@@ -192,7 +234,7 @@ namespace KomugikoBot.Modules.SlashCommands
 
             return updatedEmbed.Build();
         }
-        private string GenerateProgresBar(int totalReactions, string addedReaction, IMessage message, bool normalized ,int width = 35)
+        private static string GenerateProgresBar(int totalReactions, string addedReaction, IMessage message, bool normalized ,int width = 35)
         {
             string fillFull = "█", fillEmpty = " ";
 
@@ -224,6 +266,7 @@ namespace KomugikoBot.Modules.SlashCommands
             return result;
         }
 
+        
         // Error handlers
         private async Task EmojiErrorHandler(string title, string fieldsInput, string description, DiscordColor BorderColor, bool normalized, int timeout, IMessage? recentmesage, Exception ex)
         {
@@ -267,7 +310,22 @@ namespace KomugikoBot.Modules.SlashCommands
 
             await RespondAsync(errormessage, ephemeral:false);
         }
+        private async Task DuplicatedEmojiErrorHandler(string title, string fieldsInput, string description, DiscordColor BorderColor, bool normalized, int timeout)
+        {
+            string commandName = nameof(Questionnaire).ToLower();
+            string normalized_ARG = normalized == false ? String.Empty : ($"normalized:{normalized}");
+            string timeout_ARG = timeout == 0 ? String.Empty : ($"timeout:{timeout}");
 
+            string errormessage = $"Niepowodzenie generowania akiety, przyczyna: \n" +
+                $" - wystąpienie duplikatu emoji jako reakcja \n" +
+                $"\n" +
+                $"ostatnio wprowadzona komenda: \n" +
+                $"```\n" +
+                $"/{nameof(Questionnaire).ToLower()} title:{title} fields-input:{fieldsInput} description:{description} color:{BorderColor} {normalized_ARG} {timeout_ARG}" +
+                $"```\n";
+
+            await RespondAsync(errormessage, ephemeral: false);
+        }
     }
 }
 

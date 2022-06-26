@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Discord;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -33,11 +34,13 @@ namespace KomugikoBot
 
         public struct FormSettingsInfo
         {
-            public bool IsNormalized;
+            public readonly bool IsNormalized;
+            public readonly HashSet<IEmote> registeredEmojis;
 
-            public FormSettingsInfo(bool isNormalized)
+            public FormSettingsInfo(bool isNormalized, HashSet<IEmote> registeredEmojis)
             {
                 IsNormalized = isNormalized;
+                this.registeredEmojis = registeredEmojis;
             }
         }
     }

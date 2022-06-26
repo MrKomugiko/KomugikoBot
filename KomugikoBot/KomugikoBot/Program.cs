@@ -4,6 +4,7 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using KomugikoBot;
 using KomugikoBot.Modules;
+using KomugikoBot.Modules.SlashCommands;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -61,7 +62,12 @@ public class Program
             await sCommand.RegisterCommandsToGuildAsync(UInt64.Parse(config["guild:excelentEra"]));
             await sCommand.RegisterCommandsToGuildAsync(UInt64.Parse(config["guild:samuraje"]));
         };
-        
+        Console.WriteLine("add listener to 'ReactionAdd' and 'ReactionRemove'");
+        _client.ReactionAdded += Questionnaire.RefreshChart;
+        _client.ReactionRemoved += Questionnaire.RefreshChart;
+
+
+
         await _client.LoginAsync(TokenType.Bot, config["token:DevBot"]);
 
         await _client.StartAsync();
