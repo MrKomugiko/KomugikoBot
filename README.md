@@ -6,6 +6,7 @@ Discord Bot
 - [Stack](#stack)
 - [Prerequisits](#prerequisits)
 - [Slash Commands](#slashcommands)    
+- [Screens](#screens)  
 
 <a name="stackfront"/>
 
@@ -61,13 +62,23 @@ Discord Bot
 ## Slash Commands
 
 1 Questionary generator
-  - Command `/questionnaire`
+  - Command `/questionnaire`  [screens](#screen_questionnaire)
     - Required arguments:
       - `title` : short string with questionary title
-      - `fields-input` : string in format: (**\**:one:/one) (**\**:two:/two) (**\**:cat:/other) 
+      - `fields-input` : string in format: `(\:one:/one) (\:two:/two) (\:cat:/other)` 
+        - (`\emoji`/`label`) repeatitable
       - `description` : longer string describing questionary purpose 
       - `border-color` : selection list from discord collors
     - Optional arguments:
       - `timeout` : number represent minutes before finishing questionary
       - `normalized` : boolean select, rendering mode of chart bars normalized  
          ( bars length relative to higher value, highest rated option is a full bar )
+
+<a name="screens"/>
+
+## Overwiew - screens
+
+<a name="screen_questionnaire"/>
+
+### Questionnaire
+![Questionnaire screens](screens/QuestionaireSlashCommand.png)
